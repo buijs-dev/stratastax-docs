@@ -1,0 +1,86 @@
+---
+title: Contributing documentation
+description: How a repository contributes its documentation to docs.stratastax.dev with a horizon/ directory.
+sidebar:
+    label: Contributing docs
+    order: 90
+---
+
+Every repository describes itself. What should appear on this site lives in the repository, next
+to the code it describes, in a `horizon/` directory. This site includes it on every build, so the
+documentation changes in the same pull request as the code.
+
+## The directory
+
+```text
+horizon/
+├── horizon.yaml      the manifest (required)
+├── index.md          the component page:  /technical/components/<id>/
+├── <name>.md         further pages:       /technical/components/<id>/<name>/
+└── assets/           images the pages use
+```
+
+```yaml
+# horizon/horizon.yaml
+id: persistence                 # unique slug: the page is /technical/components/persistence/
+title: Persistence
+summary: Typed reads, search and writes on the reactive PostgreSQL client
+group: backend-libraries        # services | contract | backend-libraries | frontend | build-ops
+order: 20                       # position within the group
+pages:                          # optional: files elsewhere in the repository, not copied
+  - { file: docs/ARCHITECTURE.md, slug: architecture, title: Architecture }
+```
+
+## Writing the pages
+
+- Plain Markdown (`.md`) or MDX (`.mdx`). Frontmatter is optional: a missing `title` comes from the
+  manifest (or the page's first `#` heading), a missing `description` from the `summary`.
+- **Link relatively**, as you would on GitHub: `[guide](guide.md)` becomes the page on this site,
+  `[the entity](../src/main/kotlin/Game.kt)` becomes a link into the repository, and
+  `![diagram](assets/flow.svg)` is copied to the site.
+- **Link to the rest of the site absolutely**: `[API design](/development/07-api-design/)`.
+- Write for readers outside the repository: what the component does, its concepts, how to use it,
+  and where to go next. Reference material such as Dokka stays in the repository and is linked.
+- The *Edit page* link of a page from a public repository opens the file in that repository.
+
+## Registering a repository
+
+A repository is listed once, in
+[`sources.yaml`](https://github.com/buijs-dev/stratastax-docs/blob/main/sources.yaml) of this
+site:
+
+```yaml
+sources:
+  - { repo: buijs-dev/stratastax-persistence }
+  - { repo: buijs-dev/stratastax-engine, private: true }
+```
+
+The overview tables of [Technical](/technical/) and the *Components* sidebar are generated from the
+manifests. A private repository is read with a token with read access; when the site cannot read
+it, it is skipped with a warning and the build still succeeds. Once the repository is public,
+nothing changes.
+
+## Checks and publishing
+
+The reusable workflow `horizon-docs.yml` of
+[ci-templates](https://github.com/buijs-dev/ci-templates) runs in every repository with a
+`horizon/` directory:
+
+| When | Does |
+|---|---|
+| A pull request that changes `horizon/` | Checks the manifest, the frontmatter and that every relative link resolves |
+| A push to `main` that changes `horizon/` | Asks this site to rebuild (`docs-updated`) |
+
+This site always shows `main`: documentation of unreleased work stays on its branch until it is
+merged.
+
+## Locally
+
+With the repositories checked out next to `stratastax-docs`:
+
+```shell
+npm run sync     # also reads ../<repository>/horizon/ for every repository in sources.yaml
+npm run dev
+```
+
+`STX_<NAME>_DIR` (for example `STX_PERSISTENCE_DIR`) points the sync at another checkout.

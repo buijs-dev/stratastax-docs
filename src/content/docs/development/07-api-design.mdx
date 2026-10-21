@@ -1,0 +1,103 @@
+---
+title: API Design
+description: How to design the REST APIs of Stratastax.
+sidebar:
+    label: API Design
+    order: 7
+---
+
+> An API is a promise. Make it explicit, make it once, and keep it.
+
+Every API is designed in [stratastax-contract](/technical/components/contract/) before any code is
+written. The complete rules, with the file layout and examples, are in the
+[OpenAPI guidelines](https://github.com/buijs-dev/stratastax-contract/blob/main/stratastax-openapi/README.md);
+this page explains the ones that shape every endpoint. The result is browsable under
+[API](/technical/api/).
+
+---
+
+# 1. The Process
+
+1. Change the spec in the contract: paths and components in their own files, linted by Redocly
+   with the Stratastax rules.
+2. Review the change there. Its consumers are generated from it, so this is the review that
+   matters.
+3. Merge to `main`: the spec is bundled, published as an artifact and on this site.
+4. Services and apps regenerate and implement the new operation.
+
+---
+
+# 2. Resources and Operations
+
+- Paths are plural resources under a version: `/api/v1/matches/{matchId}`.
+- Every operation has an `operationId`, a tag, a summary and a description; list endpoints
+  document their filterable and sortable fields.
+- An action on a resource is a `POST` on a sub-path named after the verb
+  (`/matches/{matchId}/finalize`), never a `PATCH` without a body.
+- `201 Created` for a create, with `Location`, `ETag` and the body; `204` when there is nothing to
+  return; `304` only for a conditional GET.
+
+---
+
+# 3. Security on Every Operation
+
+Every operation declares its own `security`, and the generator fails on an operation without one:
+
+```yaml
+security:
+  - bearerAuth:
+      - stx-engine:match-create
+```
+
+Roles are `<service>:<feature>-<action>`: `read`, `create`, `update`, `delete`, or a verb
+(`finalize`, `decide`, `approve`). `security: []` is public. The same declaration produces the
+`@RolesAllowed` of the service and the page guards of the apps.
+
+---
+
+# 4. Every Error Is a Problem
+
+Every operation declares the complete set of error responses that applies to it, and every error is
+an RFC 9457 problem of a type from `error_type.yaml`. See [Error handling](/development/08-error-handling/).
+
+| Status | When |
+|---|---|
+| `400` | Invalid parameters, body or filter, with the offending fields |
+| `401` / `403` | No caller / a caller without the role |
+| `404` | An operation with a path parameter whose resource does not exist |
+| `409` | The state does not allow it, or a unique value is taken |
+| `412` | `If-Match` no longer matches |
+| `422` | An `Idempotency-Key` reused for another payload |
+
+---
+
+# 5. Safe to Retry, Safe to Race
+
+- **Idempotency.** Every mutating operation takes a required `Idempotency-Key`, a client-generated
+  UUIDv7. A repeated request returns the stored response with `Idempotent-Replayed: true`.
+- **Optimistic locking.** Every changeable entity exposes its version as `ETag`; every change
+  requires `If-Match` and answers `412` when someone else changed it first.
+
+---
+
+# 6. Bodies Mean Exactly One Thing
+
+- In an update, an absent field keeps its value. `null` clears a field, and only fields that can be
+  empty accept it.
+- Every string has the `maxLength` of its column and every number the range of its column, so a
+  value the database would refuse is a `400`, never a `500`. Shared limits are shared schemas.
+
+---
+
+# 7. Search Is the Same Everywhere
+
+Every list endpoint takes `sort`, `filter` (RSQL), `limit` and `cursor`, with the semantics of
+[search](/technical/components/search/). There is no offset pagination.
+
+---
+
+# 8. Versioning
+
+Within `api-vN` only backward compatible changes: new operations, new optional fields and
+parameters, new response fields. A breaking change goes into a new file `api-v(N+1)`, next to the
+old one, until every consumer moved. `info.version` goes up with every change.

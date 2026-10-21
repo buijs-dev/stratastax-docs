@@ -1,0 +1,35 @@
+name: Pages
+
+# Builds docs.stratastax.dev and deploys it to GitHub Pages: on every push to main, and when another
+# repository changes what this site shows: stratastax-contract (contract-updated), stratastax-design
+# (design-updated) and any repository of sources.yaml whose horizon/ directory changed (docs-updated).
+on:
+  push:
+    branches: [ main ]
+  repository_dispatch:
+    types: [ contract-updated, design-updated, docs-updated ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pages:
+    uses: buijs-dev/ci-templates/.github/workflows/astro-pages.yml@main
+    with:
+      sources: |
+        buijs-dev/stratastax-contract@main:_sources/stratastax-contract
+        buijs-dev/stratastax-design@main:_sources/stratastax-design
+      java-root: _sources/stratastax-contract
+      # The other repositories of sources.yaml are cloned by the sync itself.
+      prebuild: STX_FETCH_SOURCES=1 npm run sync
+    secrets:
+      # Read access to the private repositories of sources.yaml; without it they are skipped.
+      sources-token: ${{ secrets.DOCS_SOURCES_TOKEN }}

@@ -1,0 +1,59 @@
+---
+title: Logging
+description: What, when and how Stratastax services log.
+sidebar:
+    label: Logging
+    order: 9
+---
+
+> A log line is for the person on call. Write it for them, and never write a secret.
+
+---
+
+# 1. How
+
+- Kotlin code logs with [kotlin-logging](https://github.com/oshai/kotlin-logging), one logger per
+  file, with lazy messages:
+
+  ```kotlin
+  private val log = KotlinLogging.logger {}
+
+  log.warn(e) { "Failed to publish candidate ${candidate.id}" }
+  ```
+
+- Quarkus writes the logs; levels are set per category in `application.yaml`
+  (`quarkus.log.level`, `quarkus.log.category."dev.buijs.stratastax".level`).
+
+---
+
+# 2. Levels
+
+| Level | For | Example |
+|---|---|---|
+| `error` | A fault nobody handled: it needs a person | An unhandled exception behind a `500` (logged by the exception mapper, with the stack trace) |
+| `warn` | A failure the system recovers from, which should not happen often | An external service failed; a pipeline step is suspended |
+| `info` | A meaningful change of state in a background process | A candidate was published to the engine |
+| `debug` | Detail for investigating | A request that ended in a `4xx` problem |
+
+A `4xx` is the client's mistake, not ours, so it is never logged above `debug`. Request handling
+that succeeds is not logged at all: that is what access logs and metrics are for.
+
+---
+
+# 3. Never in a Log
+
+- tokens, client secrets, passwords or `Authorization` headers;
+- request or response bodies;
+- personal data such as names or e-mail addresses (log ids instead);
+- SQL with values.
+
+The HTTP client of the apps redacts `Authorization` and never logs bodies; the problem responses
+of the services never contain internals either (see [Error handling](/development/08-error-handling/)).
+
+---
+
+# 4. Background Work
+
+Pipelines and scheduled jobs log what they did and why they stopped, with the id of the item:
+a person reading the log must be able to tell what happened to a given candidate without a
+debugger. Use the item's public id, never its database id.

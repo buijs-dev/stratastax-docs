@@ -1,0 +1,29 @@
+# The repositories whose horizon/ directory is part of this site, as technical/components/<id>/
+# (scripts/horizon.mjs, README.md). ref defaults to main. A private repository is read with the
+# DOCS_SOURCES_TOKEN secret; without access it is skipped with a warning.
+sources:
+  # Services
+  - { repo: buijs-dev/stratastax-engine, private: true }
+  - { repo: buijs-dev/stratastax-game-catalog, private: true }
+  - { local: components/i18n }            # no repository yet: the i18n service is not built
+
+  # Contract and code generation
+  - { repo: buijs-dev/stratastax-contract }
+  - { repo: buijs-dev/stratastax-entity }
+  - { repo: buijs-dev/stratastax-codegen, private: true }
+
+  # Backend libraries
+  - { repo: buijs-dev/stratastax-persistence }
+  - { repo: buijs-dev/stratastax-search }
+  - { repo: buijs-dev/stratastax-http, private: true }
+  - { repo: buijs-dev/stratastax-security, private: true }
+  - { repo: buijs-dev/stratastax-ambient-context }
+  - { repo: buijs-dev/stratastax-quarkus, private: true }
+
+  # Frontend
+  - { repo: buijs-dev/stratastax-flutter }
+
+  # Build and operations
+  - { repo: buijs-dev/stratastax-gradle }
+  - { repo: buijs-dev/stratastax-style }
+  - { repo: buijs-dev/stratastax-infrastructure, private: true }

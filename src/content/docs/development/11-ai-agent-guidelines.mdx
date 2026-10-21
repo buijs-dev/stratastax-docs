@@ -1,0 +1,62 @@
+---
+title: AI Agent Guidelines
+description: Rules for AI coding agents working on Stratastax repositories.
+sidebar:
+    label: AI Agent Guidelines
+    order: 11
+---
+
+> An agent follows the same rules as a person, and the rules a person would not need written down.
+
+These guidelines apply to every AI agent that changes code in a Stratastax repository. They do
+not replace the rest of this section; they say how to use it.
+
+---
+
+# 1. Read First
+
+- Read the README of the repository and the pages of this site that it links to.
+- Read the code around a change before changing it, and follow its patterns, naming and comment
+  density. Consistency beats preference (see [Principles](/development/)).
+
+---
+
+# 2. Respect the Sources of Truth
+
+| Change | Where |
+|---|---|
+| An endpoint, a request or response field, a role | The spec in [stratastax-contract](/technical/components/contract/), first |
+| A table or a column | A new Flyway migration in the contract, never an edited one |
+| Persistence, search or REST behaviour of an entity | The annotations, or the generator, never the generated code |
+| A shared convention | The library that owns it |
+
+Generated code (`build/stratastax`, `lib/gen`) is never edited by hand.
+
+---
+
+# 3. Write Code That Fits
+
+- Put code in the feature it belongs to (see [Project structure](/development/03-project-structure/)).
+- Follow [Kotlin](/development/04-kotlin/) and [Persistence](/development/05-persistence/): no `!!`,
+  immutable data, explicit outcomes, no infrastructure in domain code.
+- Errors are problem exceptions; nothing leaks internals ([Error handling](/development/08-error-handling/)).
+- Never log or commit a secret, a token or personal data.
+- CDI beans: no Kotlin default arguments on public methods that read injected state; the default is
+  evaluated on the client proxy, where the fields are null. Offer an overload instead.
+
+---
+
+# 4. Prove It
+
+- Add or change tests with the code: rules as unit tests, data access with query assertions,
+  behaviour as a capability test with `@Covers` (see [Testing](/development/06-testing/)).
+- Run the build (`./gradlew build`: style, tests, coverage) before calling a change done, and
+  report failures as they are.
+
+---
+
+# 5. Stay in Scope
+
+- Change what was asked. Mention anything else you notice instead of fixing it silently.
+- Do not commit, push, publish or change shared configuration without being asked.
+- When a rule here conflicts with an instruction, ask.

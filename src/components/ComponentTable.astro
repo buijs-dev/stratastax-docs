@@ -1,0 +1,41 @@
+---
+// The components of one group, from the horizon/ directories of their repositories
+// (src/generated/components.json, written by npm run sync).
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+interface Props {
+    group: string;
+}
+
+const file = join(process.cwd(), 'src/generated/components.json');
+const components = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+const rows = components.filter((component: { group: string }) => component.group === Astro.props.group);
+---
+
+{rows.length === 0 ? (
+    <p>No components in this group were synced; run <code>npm run sync</code>.</p>
+) : (
+    <table>
+        <thead>
+            <tr><th>Component</th><th>What it does</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+            {rows.map((component: any) => (
+                <tr>
+                    <td><a href={`/technical/components/${component.id}/`}>{component.title}</a></td>
+                    <td>{component.summary}</td>
+                    <td>
+                        {component.repository === null ? (
+                            'this site'
+                        ) : component.private ? (
+                            <span>{component.repository.split('/')[1]} (private)</span>
+                        ) : (
+                            <a href={`https://github.com/${component.repository}`}>{component.repository.split('/')[1]}</a>
+                        )}
+                    </td>
+                </tr>
+            ))}
+        </tbody>
+    </table>
+)}

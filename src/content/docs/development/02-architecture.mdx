@@ -1,0 +1,128 @@
+---
+title: Architecture
+description: How Stratastax is put together, from the contract to a running service and app.
+sidebar:
+    label: Architecture
+    order: 2
+---
+
+> The contract defines the system; services and apps are generated around it and add only what
+> is theirs: the business rules.
+
+This page explains the shape of the system and why. The individual parts are described under
+[Technical › Components](/technical/).
+
+---
+
+# 1. Contract First
+
+Every API is an OpenAPI 3.1 spec and every database a set of Flyway migrations, both in
+[stratastax-contract](/technical/components/contract/). Nothing else defines an endpoint or a table.
+
+- A service generates its REST layer from the spec and its jOOQ tables from the migrations.
+- An app generates its client, validation and forms from the same spec.
+- A change starts in the contract, is reviewed there, and reaches every consumer through
+  regeneration. A consumer that drifts from the contract does not compile.
+
+## Rule
+
+> If it is not in the contract, it does not exist.
+
+---
+
+# 2. The Services
+
+```text
+ app (Flutter) ──HTTPS──► Traefik ──► engine ─────────► PostgreSQL (engine)
+                                        ▲
+ game catalog ──client credentials──────┘  ◄── BoardGameGeek, web search, LLM
+       │
+       └──► PostgreSQL (game-catalog)
+
+ Keycloak: users sign in (OIDC + PKCE), services get tokens (client credentials)
+```
+
+- **One database per service.** A service never reads another service's tables; it calls its API.
+- **The engine owns the platform data**, including games. The game catalog prepares games and
+  publishes them through the engine's own API, with its own service account and an idempotency
+  key, exactly like any other client.
+- **Services are stateless** and run as containers on Nomad; state lives in PostgreSQL.
+
+---
+
+# 3. Inside a Service
+
+A service is organised by feature (see [Project structure](/development/03-project-structure/)).
+Per feature, a developer writes three things; the rest is generated.
+
+```text
+HTTP request
+   │
+   ▼
+GamesApiV1Resource        generated: JAX-RS, roles, idempotency, ETag/If-Match
+   │
+   ▼
+GameService               hand-written: implements GamesApiV1Delegate
+   │   └── GameRules      hand-written: pure functions, invariants, field errors
+   ▼
+GameCreateAccess, ...     generated: repositories on stratastax-persistence
+   │
+   ▼
+jOOQ + reactive PostgreSQL client
+```
+
+| Layer | Written by | Depends on |
+|---|---|---|
+| Entity (`Game.kt`) | developer | annotations only |
+| Rules (`GameRules.kt`) | developer | the entity |
+| Service (`GameService.kt`) | developer | rules, generated accesses and delegate |
+| Resource, mappers, accesses, commands | [codegen](/technical/components/codegen/) | the libraries |
+
+The entity is the domain model; persistence and REST are derived from it. The dependency
+direction of the [principles](/development/) holds: the rules know nothing about HTTP or SQL, and
+the generated adapters depend on the domain, never the other way around.
+
+---
+
+# 4. Cross-Cutting Concerns Are Libraries
+
+| Concern | Library |
+|---|---|
+| Reads, search and writes | [persistence](/technical/components/persistence/) |
+| `sort`, `filter`, cursors | [search](/technical/components/search/) |
+| Errors, idempotency, throttling | [http](/technical/components/http/) |
+| Identities, service accounts | [security](/technical/components/security/) |
+| Context across coroutines and Mutiny | [ambient context](/technical/components/ambient-context/) |
+| Wiring it all into Quarkus | [quarkus starter](/technical/components/quarkus/) |
+
+Each library has a framework-free core and a thin integration. Behaviour is the same in every
+service because it is the same code, not the same convention.
+
+---
+
+# 5. Reactive, on Coroutines
+
+Services run on Quarkus with Kotlin coroutines and the reactive PostgreSQL client: every endpoint
+and every repository call is a `suspend` function, and no request blocks a thread while it waits
+for the database or another service. Transactions, the security identity and request data travel
+in the coroutine context, which is why context propagation is a library of its own.
+
+---
+
+# 6. The Frontend
+
+Apps are built with [stratastax-flutter](/technical/components/flutter/). Its compiler reads the
+contract, the design tokens, the translations and a few annotated classes, and generates models,
+validation, endpoints, forms, pages, routes and guards. The scopes a page needs come from the
+operations it calls, so the UI and the API agree on who may do what by construction.
+
+---
+
+# Summary
+
+- The contract is the single source of truth.
+- Services own their data and talk through APIs.
+- Developers write entities, rules and services; the plumbing is generated.
+- Cross-cutting behaviour is shared code.
+- Everything is non-blocking.
+- The frontend is generated from the same contract.

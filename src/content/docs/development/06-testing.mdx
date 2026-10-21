@@ -1,0 +1,107 @@
+---
+title: Testing
+description: How we test Stratastax services, libraries and apps.
+sidebar:
+    label: Testing
+    order: 6
+---
+
+> We test what we cannot afford to break.
+
+Tests exist to give confidence that the system does what the contract promises. Coverage is a
+consequence, not a goal (see [Principles](/development/)).
+
+---
+
+# 1. What We Test, and Where
+
+| Level | Tests | Runs against |
+|---|---|---|
+| Rules | Pure functions with every edge of an invariant | nothing: plain unit tests |
+| Service | Behaviour that combines rules, data and the caller | a real PostgreSQL (Dev Services / Testcontainers) |
+| SQL | The queries a use case runs: count, tables, no N+1 | a real PostgreSQL, with the persistence test kit |
+| Capability | A user story over the REST API, as seeded users | the running service |
+| Contract | Conventions that must hold for every operation | the running service and the bundled spec |
+
+---
+
+# 2. Rules: Fast and Exhaustive
+
+Rules are pure functions, so they are tested without a container, a mock or a clock:
+
+```kotlin
+@Test
+fun `a WIN_LOSS game has no win condition`() {
+    val errors = GameRules.errors(minPlayers = 2, maxPlayers = 4, scoreType = ScoreType.WinLoss, winCondition = WinCondition.HigherWins)
+    assertThat(errors.map { it.code }).containsExactly("NOT_ALLOWED")
+}
+```
+
+---
+
+# 3. Real Databases, Never Mocked Repositories
+
+A repository is SQL; a mock of it tests nothing. Service and SQL tests run against PostgreSQL with
+the real migrations and the deterministic test data of the
+[contract](/technical/components/contract/).
+
+The [persistence test kit](/technical/components/persistence/) asserts what the code does to the
+database:
+
+```kotlin
+val result = harness.execute { matchService.getMatch(created.id) }
+result.assertSuccessful().assertQueryCount(2)
+```
+
+A use case that suddenly runs more queries fails its test, so an N+1 never reaches production.
+
+---
+
+# 4. Capabilities over the API
+
+Capability tests describe what a user can do, end to end over HTTP, as seeded users with their
+real roles (`actAs("Emma")`). Every test names the contract operations it exercises:
+
+```kotlin
+@Test
+@Covers("createMatch", "finalizeMatch")
+fun `a recorder finalizes a match and it can no longer be edited directly`() { ... }
+```
+
+`ApiV1CoverageTest` reads the bundled spec and fails when an operation is covered by no test, or
+when `@Covers` names an operation the contract does not have. A new endpoint therefore cannot be
+added without a test.
+
+---
+
+# 5. Conventions for Every Operation
+
+Some promises hold for the whole contract: every operation checks its roles, every mutation is
+idempotent, every error is a problem of a known type. `ContractConventionsTest` verifies them
+generically, instead of trusting each feature to remember.
+
+---
+
+# 6. Mocks
+
+Mock only what you do not own and cannot run: an external service (BoardGameGeek, the LLM), the
+clock, the security identity of a test user. Never mock your own code to make a test pass.
+
+---
+
+# 7. Libraries and Apps
+
+- **Libraries** test their public API, against real PostgreSQL where SQL is involved.
+- **stratastax-flutter** tests the compiler on fixtures and on the real contracts (the generated
+  code on disk must be up to date), the runtime packages with widget tests, and the example app
+  end to end against a contract-conformant stub server, in process.
+
+---
+
+# Summary
+
+- Pure rules: unit tests.
+- Data: real PostgreSQL, query assertions.
+- Behaviour: capabilities over the API, every operation covered.
+- Conventions: checked for every operation at once.
+- Mocks only at the edges.

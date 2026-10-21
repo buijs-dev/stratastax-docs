@@ -1,0 +1,86 @@
+---
+// The home page of docs.stratastax.dev: the API contracts first (one tile each, from index.json), then the
+// way into the architecture and the guides. One page, no scrolling through a sidebar to find the APIs.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ContractTiles from '../components/ContractTiles.astro';
+
+const guides = [
+    { title: 'Architecture', href: '/development/02-architecture/', text: 'How Stratastax fits together, from the contract to a running service and app.' },
+    { title: 'Components', href: '/technical/', text: 'Every service, library and tool, documented by its own repository.' },
+    { title: 'Database', href: '/technical/database/', text: 'The tables of every service, generated from the migrations.' },
+    { title: 'Design & domain', href: '/design/', text: 'Vision, concepts, user journeys and the domain model.' },
+    { title: 'Development', href: '/development/', text: 'Principles and guidelines: Kotlin, persistence, testing, APIs, errors.' },
+    { title: 'Design system', href: '/design/design-system/', text: 'Colours, type and spacing of every Stratastax app.' },
+];
+---
+
+<StarlightPage
+    frontmatter={{
+        title: 'Stratastax documentation',
+        description: 'The APIs, architecture and guides of Stratastax.',
+        template: 'splash',
+        tableOfContents: false,
+    }}
+>
+    <p class="lead">
+        The APIs, architecture and guidelines of <a href="https://stratastax.dev">Stratastax</a>. Every contract
+        has a reference, an explorer to try it and the bundled spec for code generators.
+    </p>
+
+    <h2 id="contracts">API contracts</h2>
+    <ContractTiles />
+
+    <h2 id="guides">Architecture & guides</h2>
+    <ul class="guide-tiles not-content">
+        {guides.map((guide) => (
+            <li>
+                <a href={guide.href}>
+                    <span class="guide-title">{guide.title}</span>
+                    <span class="guide-text">{guide.text}</span>
+                </a>
+            </li>
+        ))}
+    </ul>
+</StarlightPage>
+
+<style>
+    .lead {
+        font-size: var(--sl-text-lg);
+        color: var(--sl-color-gray-2);
+        max-width: 48rem;
+    }
+    h2 {
+        margin-top: 2.5rem;
+    }
+    .guide-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        gap: 1rem;
+        padding: 0;
+        margin: 1rem 0 0;
+        list-style: none;
+    }
+    .guide-tiles a {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        height: 100%;
+        padding: 1rem;
+        border: 1px solid var(--sl-color-hairline);
+        border-radius: var(--stx-radius-lg, 0.75rem);
+        background: var(--sl-color-bg-nav);
+        color: var(--sl-color-text);
+        text-decoration: none;
+    }
+    .guide-tiles a:hover {
+        border-color: var(--sl-color-text-accent);
+    }
+    .guide-title {
+        font-weight: 700;
+        color: var(--sl-color-white);
+    }
+    .guide-text {
+        font-size: var(--sl-text-sm);
+        color: var(--sl-color-gray-2);
+    }
+</style>

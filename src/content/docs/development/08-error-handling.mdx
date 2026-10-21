@@ -1,0 +1,84 @@
+---
+title: Error Handling
+description: How errors flow from a business rule to the client.
+sidebar:
+    label: Error Handling
+    order: 8
+---
+
+> An error is part of the contract. It is designed, typed and tested like any other response.
+
+How to model errors in Kotlin code is in [Kotlin › Error handling](/development/04-kotlin/); this
+page covers how they cross the service boundary.
+
+---
+
+# 1. Three Kinds of Failure
+
+| Kind | Example | Becomes |
+|---|---|---|
+| Invalid input | `maxPlayers` below `minPlayers` | `400` with field errors |
+| A business rule refuses | A finalized match is edited directly | `409`, `403`, `404`, ... |
+| Something broke | The database is unreachable | `500`, details only in the log |
+
+The first two are expected outcomes: they are part of the contract and the client can act on them.
+The third is a fault: the client gets a generic problem and we get the stack trace.
+
+---
+
+# 2. Throw a Problem Exception
+
+Domain code throws an exception that already knows which problem it is, from
+[problem-core](/technical/components/http/):
+
+```kotlin
+internal class MatchNotMutableException(matchId: MatchId) :
+    ConflictException(
+        "Match is finalized",
+        "Match $matchId is FINALIZED; propose this change via POST /matches/$matchId/edits instead.",
+    )
+```
+
+| Base class | Status |
+|---|---|
+| `ValidationException` (with `FieldError`s) | 400 |
+| `ForbiddenException` | 403 |
+| `NotFoundException` | 404 |
+| `ConflictException` | 409 |
+| `PreconditionFailedException` | 412 |
+
+Validation collects every error of a request at once, as `FieldError(field, code, message)`, so the
+client can show them all next to their fields.
+
+---
+
+# 3. Everything Becomes a Problem
+
+`ProblemFactory` maps any exception to an RFC 9457 problem: it walks the cause chain and asks every
+resolver in priority order; the first answer wins, and nothing recognised is a `500`. Resolvers
+exist for problem exceptions, JSON that cannot be parsed, Bean Validation, JAX-RS, security,
+search parameters, idempotency, persistence exceptions and PostgreSQL errors (by SQLSTATE). The
+mapper of `quarkus-http` turns the result into `application/problem+json`.
+
+A service rarely writes a resolver: throwing a problem exception is enough.
+
+---
+
+# 4. Never Leak Internals
+
+- A problem never contains a stack trace, SQL, a table, a column or a constraint name, or values
+  from the database.
+- Search errors name API fields, not columns.
+- A `500` says only that something went wrong; its cause is logged (see
+  [Logging](/development/09-logging/)).
+- The `type` is one of the contract's error types: `ProblemType` in problem-core mirrors
+  `error_type.yaml`, and the build fails when they differ.
+
+---
+
+# 5. In the Apps
+
+The generated Flutter client never throws for an HTTP error: every call returns
+`Result<T, Problem>`. Field errors of a `400` are shown at their fields, other problems as a
+message, and a network failure is a problem of its own type, so the UI handles every case
+explicitly.

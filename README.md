@@ -1,4 +1,5 @@
 # Stratastax Docs
+[![Stratastax](https://img.shields.io/badge/Product-stratastax.dev-4F46E5?style=flat)](https://stratastax.dev/)
 [![](https://img.shields.io/badge/Buijs-Software-blue)](https://buijs.dev/)
 [![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
 

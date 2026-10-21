@@ -1,0 +1,75 @@
+---
+title: Technical
+description: Reference for the technical implementation of Stratastax - its components, APIs and databases.
+sidebar:
+    label: Overview
+    order: 0
+---
+
+import ComponentTable from '../../../components/ComponentTable.astro';
+
+This section is the technical reference of Stratastax: what each component does, how the parts fit
+together, the REST APIs and the database schemas. How we write the code is in
+[Development](/development/); what the platform does for its users is in [Design](/design/).
+
+## The system at a glance
+
+```text
+                 stratastax-contract (OpenAPI specs + Flyway migrations)
+                /                      |                        \
+   REST layer generated       REST layer generated        typed clients generated
+               |                       |                          |
+     stratastax-engine  <-- games -- stratastax-game-catalog    Flutter apps
+     (platform API)                  (BoardGameGeek pipeline)   (stratastax-flutter)
+               \                       |                          /
+                 PostgreSQL, Keycloak and Traefik on Nomad (stratastax-infrastructure)
+```
+
+- **Contract first.** Every API is an OpenAPI 3.1 spec and every database a set of Flyway
+  migrations in the [contract](/technical/components/contract/). Services and clients are generated
+  from it; nothing defines an endpoint or a table on its own.
+- **Annotated entities, generated plumbing.** A service describes its entities once, as annotated
+  Kotlin data classes ([entity](/technical/components/entity/)). The
+  [code generator](/technical/components/codegen/) writes the persistence, search and REST code
+  around them; the service writes the business rules.
+- **Shared libraries for the cross-cutting concerns**: persistence on jOOQ and the reactive
+  PostgreSQL client, search with RSQL filters and signed cursors, RFC 9457 problems, idempotency,
+  throttling, security and context propagation. The Quarkus starter wires them in.
+- **A contract-driven frontend.** [stratastax-flutter](/technical/components/flutter/) generates
+  models, validation, endpoints, forms, pages and routes from the same specs, styled with the
+  [design system](/design/design-system/).
+
+## Components
+
+Every component documents itself: its repository has a `horizon/` directory that this site
+includes (see [Contributing documentation](/technical/contributing-docs/)). Some repositories are
+private for now; they are listed, and included once the site can read them.
+
+### Services
+
+<ComponentTable group="services" />
+
+### Contract and code generation
+
+<ComponentTable group="contract" />
+
+### Backend libraries
+
+<ComponentTable group="backend-libraries" />
+
+### Frontend
+
+<ComponentTable group="frontend" />
+
+The [design system](/design/design-system/) is one token source for the apps, this site and
+Swagger UI.
+
+### Build and operations
+
+<ComponentTable group="build-ops" />
+
+## Reference
+
+- [API](/technical/api/): every operation of every spec, and an [explorer](/technical/api/explorer/)
+  to try them.
+- [Database](/technical/database/): every table of every service, generated from the migrations.

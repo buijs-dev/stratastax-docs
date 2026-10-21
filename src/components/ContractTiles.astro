@@ -1,0 +1,114 @@
+---
+// One tile per API contract of public/openapi/index.json (written by npm run sync), so a new contract
+// appears without a change here: its reference, the explorer and the bundled spec.
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { colorsOf, ordered } from '../data/contracts.mjs';
+
+const file = join(process.cwd(), 'public/openapi/index.json');
+const specs = ordered(existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : []);
+const colors = colorsOf(specs);
+---
+
+{specs.length === 0 ? (
+    <p>No contracts were synced into this build; run <code>npm run sync</code>.</p>
+) : (
+    <ul class="contract-tiles not-content">
+        {specs.map((spec: any) => (
+            <li class="contract-tile" style={`--contract: ${colors[spec.name].color}; --contract-subtle: ${colors[spec.name].subtle};`}>
+                <a class="contract-main" href={`/technical/api/${spec.name}/`}>
+                    <span class="contract-name"><span class="dot" aria-hidden="true"></span>{spec.name}<span class="contract-version">v{spec.version}</span></span>
+                    <span class="contract-title">{spec.title}</span>
+                    {spec.summary && <span class="contract-summary">{spec.summary}</span>}
+                </a>
+                <div class="contract-actions">
+                    <a href={`/technical/api/${spec.name}/`}>Reference</a>
+                    <a href={`/technical/api/explorer/?spec=${spec.file}`}>Try it</a>
+                    <a href={`/openapi/${spec.file}`}>YAML</a>
+                </div>
+            </li>
+        ))}
+    </ul>
+)}
+
+<style>
+    .contract-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        gap: 1rem;
+        padding: 0;
+        margin: 1rem 0 0;
+        list-style: none;
+    }
+    .contract-tile {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--sl-color-hairline);
+        border-top: 3px solid var(--contract);
+        border-radius: var(--stx-radius-lg, 0.75rem);
+        background: var(--sl-color-bg-nav);
+        overflow: hidden;
+    }
+    .contract-main {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        padding: 1rem 1rem 0.75rem;
+        color: var(--sl-color-text);
+        text-decoration: none;
+        flex: 1;
+    }
+    .contract-main:hover .contract-title {
+        color: var(--sl-color-text-accent);
+    }
+    .contract-name {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-family: var(--sl-font-system-mono);
+        font-size: var(--sl-text-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--sl-color-gray-3);
+    }
+    .dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: var(--contract);
+    }
+    .contract-title {
+        font-weight: 700;
+        font-size: var(--sl-text-lg);
+        color: var(--sl-color-white);
+    }
+    .contract-summary {
+        font-size: var(--sl-text-sm);
+        color: var(--sl-color-gray-2);
+    }
+    .contract-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem 0.75rem 0.75rem;
+        border-top: 1px solid var(--sl-color-hairline);
+    }
+    .contract-actions a {
+        padding: 0.35rem 0.6rem;
+        border-radius: var(--stx-radius-md, 0.5rem);
+        font-size: var(--sl-text-sm);
+        font-weight: 600;
+        color: var(--sl-color-text);
+        text-decoration: none;
+    }
+    .contract-actions a:hover {
+        background: var(--contract-subtle);
+        color: var(--sl-color-white);
+    }
+    .contract-version {
+        margin-inline-start: auto;
+        text-transform: none;
+        letter-spacing: 0;
+    }
+</style>

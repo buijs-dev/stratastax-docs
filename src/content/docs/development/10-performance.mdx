@@ -1,0 +1,58 @@
+---
+title: Performance
+description: How Stratastax stays fast without premature optimisation.
+sidebar:
+    label: Performance
+    order: 10
+---
+
+> If it is not measured, it is not a problem yet. But some designs are slow by construction;
+> those we avoid from the start.
+
+---
+
+# 1. Fast by Design
+
+These choices are made once, in the libraries, so no feature has to remember them:
+
+| Choice | Why |
+|---|---|
+| Reactive, non-blocking I/O on coroutines | A request waiting for the database holds no thread |
+| Related entities in the same query (joins, JSON arrays) | No N+1 |
+| Keyset (cursor) pagination, never offsets | Page 1000 is as fast as page 1, and stable while data changes |
+| Batches with one statement per step | Many rows, few round trips |
+| `FOR UPDATE SKIP LOCKED` for work queues | Workers never wait for each other |
+| An index for the filters and sorts a list endpoint is built for | Search does not scan a table |
+
+---
+
+# 2. Measured in Tests
+
+The [persistence test kit](/technical/components/persistence/) asserts the number of queries a use
+case runs and can show their plans. A change that adds a query fails a test, which is the cheapest
+moment to notice.
+
+---
+
+# 3. External Services
+
+Calls to services we do not own are rate limited and protected by a circuit breaker (see
+[HTTP](/technical/components/http/)): a slow or failing service suspends the work that needs it
+instead of piling up requests.
+
+---
+
+# 4. In the Apps
+
+- Messages, plural rules and date formats are compiled; nothing is parsed at runtime.
+- Tokens are `const`; responsive values only rebuild when a breakpoint changes.
+- Non-base locales are deferred libraries, loaded when they are first used.
+
+---
+
+# 5. When Something Is Slow
+
+1. Measure it in the environment where it is slow.
+2. Find the cause: usually a query, an index or a round trip.
+3. Fix that, with a test that keeps it fixed.
+4. Prefer clarity over micro-optimisations everywhere else.

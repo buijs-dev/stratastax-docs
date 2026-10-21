@@ -1,0 +1,7 @@
+# Documentation of this repository on docs.stratastax.dev (see the README of stratastax-docs).
+# index.md is the component page, /technical/components/i18n/; other *.md here are pages below it.
+id: i18n
+title: I18n
+summary: Translations of the apps, written in a CMS and published as bundles
+group: services
+order: 3

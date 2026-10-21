@@ -1,0 +1,28 @@
+---
+// Overrides Starlight's SocialIcons, which it shows in the header and at the bottom of the mobile
+// menu: the API reference and the explorer are one tap away on every page, then the default icons.
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+---
+
+<nav class="header-links" aria-label="API">
+    <a href="/technical/api/">API</a>
+    <a href="/technical/api/explorer/">Explorer</a>
+</nav>
+<Default />
+
+<style>
+    .header-links {
+        display: flex;
+        gap: 1rem;
+        margin-inline-end: 0.5rem;
+    }
+    .header-links a {
+        color: var(--sl-color-gray-2);
+        font-size: var(--sl-text-sm);
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .header-links a:hover {
+        color: var(--sl-color-white);
+    }
+</style>
